@@ -106,3 +106,19 @@ You should use small densify_grad_threshold like 0.00002 for equirectangular.
 
 
 
+
+## Dense initialization recipe (recommended for sparse-view captures)
+
+Instead of training from sparse SfM points, densify the initial point cloud with OpenSfM MVS:
+
+```shell
+bin/opensfm undistort data/your_data
+bin/opensfm compute_depthmaps data/your_data
+python tools/make_dense_recon.py data/your_data data/your_data_dense
+```
+
+This replaces `points` in reconstruction.json with ~400k MVS points (camera poses unchanged).
+On a 12-view 360 capture this improved held-out test PSNR by +2.3 dB and removed most floaters,
+using the default densify_grad_threshold (2e-5 makes the gaussian count explode on 12GB GPUs —
+use it only with ample VRAM). `tools/make_recon_stanford.py` builds reconstruction.json directly
+from Stanford 2D-3D-S pano poses + global_xyz without running SfM.
