@@ -1,6 +1,8 @@
 
 # 360 Gaussian Splatting
 
+> Based on [inuex35/360-gaussian-splatting](https://github.com/inuex35/360-gaussian-splatting) — original 360° equirectangular Gaussian Splatting implementation. This repository adds dense-initialization tools and novel-view rendering scripts.
+
 <div align="center">
   
   <a href="https://www.youtube.com/watch?v=AhWHeEB8-vc">
