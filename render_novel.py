@@ -1,46 +1,49 @@
 #!/usr/bin/env python3
-"""학습 카메라 12개 사이를 보간한 novel view 궤적을 equirect로 렌더 → PNG 시퀀스.
-사용: python render_novel.py -m <model_dir> --iteration 30000 --outdir <dir>"""
-import os, sys, torch, numpy as np, torchvision
+"""Render an interpolated novel-view trajectory between training cameras.
+
+Usage: python render_novel.py -m <model_dir> --iteration 30000 --outdir <dir> [--steps 4] [--rot slerp|fixed]
+Encode the frames with e.g.: ffmpeg -framerate 24 -i <dir>/%04d.png -c:v libx264 -pix_fmt yuv420p out.mp4"""
+import os, torch, numpy as np, torchvision
 from argparse import ArgumentParser
 from scipy.spatial.transform import Rotation, Slerp
 from arguments import ModelParams, PipelineParams, get_combined_args
 from gaussian_renderer import render_spherical, GaussianModel
 from scene import Scene
-from scene.cameras import Camera
-from utils.general_utils import safe_state
+from scene.cameras import MiniCam
+from utils.graphics_utils import getWorld2View2, getProjectionMatrix
 
 parser = ArgumentParser()
 model = ModelParams(parser, sentinel=True)
 pipeline = PipelineParams(parser)
 parser.add_argument("--iteration", default=30000, type=int)
 parser.add_argument("--outdir", required=True, type=str)
-parser.add_argument("--steps", default=10, type=int)  # 카메라 쌍당 보간 프레임
+parser.add_argument("--steps", default=10, type=int, help="interpolated frames per camera pair")
+parser.add_argument("--rot", default="slerp", choices=["slerp", "fixed"],
+                    help="orientation: slerp between cameras, or fixed to the first camera")
 args = get_combined_args(parser)
-safe_state(True)
 
 dataset, pipe = model.extract(args), pipeline.extract(args)
 gaussians = GaussianModel(dataset.sh_degree)
 scene = Scene(dataset, gaussians, load_iteration=args.iteration, shuffle=False, panorama=True)
-bg = torch.tensor([0, 0, 0], dtype=torch.float32, device="cuda")
+bg = torch.tensor([0.0, 0.0, 0.0], device="cuda")
 
 cams = sorted(scene.getTrainCameras(), key=lambda c: c.image_name)
-H, W = cams[0].original_image.shape[1], cams[0].original_image.shape[2]
-dummy = torch.zeros(3, H, W)
+W, H = cams[0].image_width, cams[0].image_height
+FOV = np.pi / 2
+proj = getProjectionMatrix(znear=0.01, zfar=100.0, fovX=FOV, fovY=FOV).transpose(0, 1).cuda()
 
 os.makedirs(args.outdir, exist_ok=True)
 idx = 0
 with torch.no_grad():
     for a, b in zip(cams[:-1], cams[1:]):
-        Ca, Cb = -a.R @ a.T, -b.R @ b.T                      # 카메라 중심 (world)
+        Ca, Cb = a.camera_center.cpu().numpy(), b.camera_center.cpu().numpy()
         slerp = Slerp([0, 1], Rotation.from_matrix(np.stack([a.R, b.R])))
         for t in np.linspace(0, 1, args.steps, endpoint=False):
-            Rt = slerp(t).as_matrix()
+            R = cams[0].R if args.rot == "fixed" else slerp(t).as_matrix()
             C = (1 - t) * Ca + t * Cb
-            T = -Rt.T @ C                                     # w2c translation
-            cam = Camera(colmap_id=0, R=Rt, T=T, FoVx=np.pi/2, FoVy=np.pi/2,
-                         image=dummy, mask=None, gt_alpha_mask=None,
-                         image_name=f"nv{idx:04d}", uid=idx, panorama=True)
+            T = -R.T @ C  # world-to-camera translation (R is cam-to-world)
+            wv = torch.tensor(getWorld2View2(R, T)).transpose(0, 1).cuda()
+            cam = MiniCam(W, H, FOV, FOV, 0.01, 100.0, wv, wv @ proj)
             img = render_spherical(cam, gaussians, pipe, bg)["render"]
             torchvision.utils.save_image(img, os.path.join(args.outdir, f"{idx:04d}.png"))
             idx += 1
