@@ -2,16 +2,20 @@
 """Stanford 2D-3D-S pano poses + global_xyz -> OpenSfM reconstruction.json for 360-gaussian-splatting.
 No SfM: uses ground-truth camera_rt_matrix (verified world->cam, X_cam=R*X_world+t) and
 per-pixel global_xyz (.exr) as the init point cloud. Feeds train.py -s <OUT> --panorama.
-"""
-import os, json, glob, numpy as np
+
+Usage: python tools/make_recon_stanford.py <pano_dir> <out_dir>
+<pano_dir> is an area's pano/ folder containing rgb/, pose/, global_xyz/."""
+import os, sys, json, glob
+import numpy as np
 os.environ["OPENCV_IO_ENABLE_OPENEXR"] = "1"
 import cv2
 from scipy.spatial.transform import Rotation
 
-SRC = "/home/ingon/1/subset_office31/area_1/pano"
-OUT = "/home/ingon/1/data/office31"
+if len(sys.argv) != 3:
+    sys.exit(__doc__)
+SRC, OUT = sys.argv[1], sys.argv[2]
 OUT_RES = (2048, 1024)   # ponytail: train image (W,H); drop to (1024,512) if 12GB OOM
-PTS_PER_PANO = 20000     # 13*20k = 260k init points
+PTS_PER_PANO = 20000
 np.random.seed(0)
 
 os.makedirs(OUT + "/images", exist_ok=True)
@@ -37,18 +41,17 @@ for pf in pose_files:
     if bgr.shape[2] == 4:
         bgr = cv2.cvtColor(bgr, cv2.COLOR_BGRA2BGR)
     cv2.imwrite(f"{OUT}/images/{name}", cv2.resize(bgr, OUT_RES, interpolation=cv2.INTER_AREA))  # train image
-    rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)                   # colors for points
 
-    P = xyz.reshape(-1, 3).astype(np.float64)
-    C = rgb.reshape(-1, 3)
-    valid = np.isfinite(P).all(1) & (np.abs(P).sum(1) > 1e-6)   # drop NaN/inf and (0,0,0) no-return
+    P = xyz.reshape(-1, 3)                                       # float32
+    valid = np.isfinite(P).all(1) & (np.abs(P).sum(1) > 1e-6)    # drop NaN/inf and (0,0,0) no-return
     idx = np.where(valid)[0]
     if len(idx) > PTS_PER_PANO:
         idx = np.random.choice(idx, PTS_PER_PANO, replace=False)
-    all_pts.append(P[idx]); all_cols.append(C[idx])
+    all_pts.append(P[idx].astype(np.float64))
+    all_cols.append(bgr.reshape(-1, 3)[idx][:, ::-1])            # BGR->RGB, selected rows only
 
 pts = np.concatenate(all_pts)
-cols = np.concatenate(all_cols).astype(int)
+cols = np.concatenate(all_cols)
 cam_centers = np.array(cam_centers)
 
 # --- sanity (non-circular): camera centers must sit inside the point-cloud bbox ---
@@ -58,9 +61,8 @@ print(f"points={len(pts)}  bbox_lo={lo.round(2)}  bbox_hi={hi.round(2)}  extent=
 print(f"cam_centers inside bbox: {inside.sum()}/{len(cam_centers)}  (expect all; else XYZ channel/frame wrong)")
 print(f"cam0 center={cam_centers[0].round(3)}")
 
-points = {str(i): {"coordinates": pts[i].tolist(),
-                   "color": [int(cols[i, 0]), int(cols[i, 1]), int(cols[i, 2])]}
-          for i in range(len(pts))}
+coords, colors = pts.tolist(), cols.tolist()
+points = {str(i): {"coordinates": coords[i], "color": colors[i]} for i in range(len(coords))}
 recon = [{
     "reference_lla": {"latitude": 0.0, "longitude": 0.0, "altitude": 0.0},
     "cameras": {"spherical": {"projection_type": "spherical", "width": 4096, "height": 2048}},
