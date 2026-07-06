@@ -155,3 +155,8 @@ On a 12-view 360 capture this improved held-out test PSNR by +2.3 dB and removed
 using the default densify_grad_threshold (2e-5 makes the gaussian count explode on 12GB GPUs —
 use it only with ample VRAM). `tools/make_recon_stanford.py` builds reconstruction.json directly
 from Stanford 2D-3D-S pano poses + global_xyz without running SfM.
+
+<div align="center">
+  <img src="assets/dense_init_before_after.png" width="880" alt="initial point cloud: SfM sparse vs MVS dense">
+  <br><em>What the training actually starts from — SfM sparse (left) vs MVS dense (right), same scene &amp; cameras (▲)</em>
+</div>
