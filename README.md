@@ -25,6 +25,25 @@ Full pipeline runs on videos I shot with an Insta360 (equirectangular 3840×1920
 
 Pipeline: sequential-matching SfM (spherical camera) → `undistort` + `compute_depthmaps` (MVS) → dense init via `tools/make_dense_recon.py` → `train.py --panorama --eval`. See the dense initialization recipe below — on sparse captures it was worth **+2.3 dB** over training from SfM sparse points. Novel-view videos are rendered with `render_novel.py`.
 
+<div align="center">
+  <table>
+    <tr>
+      <td><img src="assets/trajectory_lounge.png" width="430" alt="SfM camera path through the MVS dense cloud - lounge"></td>
+      <td><img src="assets/trajectory_lobby.png" width="430" alt="SfM camera path through the MVS dense cloud - lobby and corridor"></td>
+    </tr>
+    <tr>
+      <td align="center"><em>SfM camera path through the dense cloud — lounge (142 frames)</em></td>
+      <td align="center"><em>lobby + corridor (149 frames)</em></td>
+    </tr>
+  </table>
+
+  <img src="assets/render_vs_gt_lounge.jpg" width="880" alt="held-out view: render vs ground truth - lounge">
+  <br><em>Held-out view — GS render (left) vs ground truth (right), lounge</em><br><br>
+  <img src="assets/render_vs_gt_lobby.jpg" width="880" alt="held-out view: render vs ground truth - lobby">
+  <br><em>Held-out view — GS render (left) vs ground truth (right), lobby + corridor</em>
+
+</div>
+
 # Support me
 This is just my personal project.
 If you've enjoyed using this project and found it helpful, 
