@@ -5,6 +5,10 @@
 
 <div align="center">
 
+  <a href="https://huggingface.co/spaces/ingon1/360gs-walkthroughs">
+    <img src="https://huggingface.co/datasets/huggingface/badges/resolve/main/open-in-hf-spaces-md.svg" alt="Open live demo in Hugging Face Spaces">
+  </a>
+
   <img src="assets/novelview_lounge.gif" width="640" alt="novel-view flythrough of my own Insta360 capture (office lounge)">
 
   <em>Novel-view flythrough reconstructed from a 71-second Insta360 walk (142 frames, my own capture).<br>
