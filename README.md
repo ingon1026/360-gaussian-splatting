@@ -4,14 +4,26 @@
 > Based on [inuex35/360-gaussian-splatting](https://github.com/inuex35/360-gaussian-splatting) — original 360° equirectangular Gaussian Splatting implementation. This repository adds dense-initialization tools and novel-view rendering scripts.
 
 <div align="center">
-  
-  <a href="https://www.youtube.com/watch?v=AhWHeEB8-vc">
-    <img src="https://github.com/inuex35/360-gaussian-splatting/assets/129066540/25cb8760-0709-445d-a535-9885ba2786b7" width="640" alt="360 gaussian splatting with spherical render">
-  </a>
-  
+
+  <img src="assets/novelview_lounge.gif" width="640" alt="novel-view flythrough of my own Insta360 capture (office lounge)">
+
+  <em>Novel-view flythrough reconstructed from a 71-second Insta360 walk (142 frames, my own capture).<br>
+  Original demo by inuex35: <a href="https://www.youtube.com/watch?v=AhWHeEB8-vc">YouTube</a></em>
+
 </div>
 
 This repository contains programs for reconstructing space using OpenSfM and Gaussian Splatting. For original repositories of OpenSfM and Gaussian Splatting, please refer to the links provided.
+
+## Results on my own 360 captures
+
+Full pipeline runs on videos I shot with an Insta360 (equirectangular 3840×1920, ~70s walks, frames extracted at 2fps):
+
+| Scene | Views | SfM ([ind-bermuda-opensfm](https://github.com/inuex35/ind-bermuda-opensfm)) | Init points (MVS dense) | Test PSNR (full-res, held-out) |
+|---|---|---|---|---|
+| Office lounge | 142 | 142/142 registered | 11.0M → 1.5M sampled | 19.70 dB |
+| Lobby + corridor | 149 | 149/149 registered | 5.4M → 1.5M sampled | 19.99 dB |
+
+Pipeline: sequential-matching SfM (spherical camera) → `undistort` + `compute_depthmaps` (MVS) → dense init via `tools/make_dense_recon.py` → `train.py --panorama --eval`. See the dense initialization recipe below — on sparse captures it was worth **+2.3 dB** over training from SfM sparse points. Novel-view videos are rendered with `render_novel.py`.
 
 # Support me
 This is just my personal project.
