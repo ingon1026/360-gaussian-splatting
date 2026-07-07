@@ -164,3 +164,25 @@ from Stanford 2D-3D-S pano poses + global_xyz without running SfM.
   <img src="assets/dense_init_before_after.png" width="880" alt="initial point cloud: SfM sparse vs MVS dense">
   <br><em>What the training actually starts from — SfM sparse (left) vs MVS dense (right), same scene &amp; cameras (▲)</em>
 </div>
+
+## Removing the camera operator (masking)
+
+On selfie-stick 360 captures the operator is baked into the bottom of every frame
+and reconstructs as a smeared ghost under the camera. `tools/make_mask.py` writes a
+bottom-band mask per view; `train.py --masks` then excludes that region from the loss.
+
+```shell
+python tools/make_mask.py data/your_data --frac 0.30
+python train.py -s data/your_data --panorama --eval --masks data/your_data/masks
+```
+
+<div align="center">
+  <img src="assets/mask_photographer_before_after.png" width="520" alt="before/after photographer masking">
+  <br><em>Bottom of a novel view — operator present (top) vs masked out (bottom)</em>
+</div>
+
+**Trade-off:** the masked band gets no supervision, so the floor directly under the
+camera turns blurry. Keep the band as small as your capture allows — a higher selfie
+stick lets you drop toward ~20%. Note held-out PSNR is computed full-frame, so the
+number *drops* after masking (the unsupervised band is scored against the real floor);
+judge the result by the rendered view, not the metric.
