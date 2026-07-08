@@ -1,17 +1,18 @@
 #!/usr/bin/env python3
 """Replace the sparse SfM points in reconstruction.json with an OpenSfM MVS dense cloud.
 
-Usage: python tools/make_dense_recon.py <sfm_dataset_dir> <out_dir>
+Usage: python tools/make_dense_recon.py <sfm_dataset_dir> <out_dir> [max_pts]
 <sfm_dataset_dir> must contain reconstruction.json, images/, undistorted/depthmaps/merged.ply
-(produced by `bin/opensfm undistort` + `bin/opensfm compute_depthmaps`)."""
+(produced by `bin/opensfm undistort` + `bin/opensfm compute_depthmaps`).
+max_pts: number of MVS points to keep (default 400000; use 1500000 for dense/high quality)."""
 import os, sys, json
 import numpy as np
 from plyfile import PlyData
 
-if len(sys.argv) != 3:
+if len(sys.argv) not in (3, 4):
     sys.exit(__doc__)
 SRC, OUT = sys.argv[1], sys.argv[2]
-MAX_PTS = 400_000
+MAX_PTS = int(sys.argv[3]) if len(sys.argv) == 4 else 400_000
 np.random.seed(0)
 
 os.makedirs(OUT, exist_ok=True)
