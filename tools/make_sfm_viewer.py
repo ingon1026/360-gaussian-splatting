@@ -13,8 +13,8 @@ xyz, rgb = [], []
 for p in rec['points'].values():
     xyz.append(p['coordinates']); rgb.append(p['color'])
 xyz = np.array(xyz, np.float32); rgb = np.clip(np.array(rgb), 0, 255).astype(np.uint8)
-N = 250000
-if len(xyz) > N:
+N = int(sys.argv[4]) if len(sys.argv) > 4 else 250000   # 0 = 전체(풀)
+if N > 0 and len(xyz) > N:
     idx = np.linspace(0, len(xyz) - 1, N).astype(int)
     xyz, rgb = xyz[idx], rgb[idx]
 
